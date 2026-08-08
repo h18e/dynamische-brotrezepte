@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brotrezepte &middot; Datenbank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #1c1815;
+    --surface: #241e1a;
+    --surface-2: #2e2620;
+    --cream: #f3e9d2;
+    --paper: #efe3c4;
+    --tomato: #d9822b;
+    --tomato-dark: #b3661c;
+    --basil: #7c9a5d;
+    --muted: #9c8f7c;
+    --line: rgba(243,233,210,0.14);
+    --shadow: rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(217,130,43,0.12), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(124,154,93,0.08), transparent 50%),
+      var(--bg);
+    color:var(--cream);
+    font-family:'Manrope', system-ui, sans-serif;
+    min-height:100vh;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+  header{margin-bottom:32px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--basil);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(34px, 5.5vw, 56px);
+    line-height:1.02;
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+    color:var(--tomato);
+  }
+  h1 em{
+    font-style:italic;
+    font-weight:400;
+  }
+  .sub{color:var(--muted); font-size:15.5px; max-width:52ch; line-height:1.5;}
+
+  /* ---- Filter ---- */
+  .filter-panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:20px 22px;
+    margin-bottom:24px;
+  }
+  .filter-panel h2{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 14px;
+    font-weight:500;
+  }
+  .segmented{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .seg-btn{
+    flex:1;
+    min-width:110px;
+    padding:10px 14px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--muted);
+    font-family:'Manrope', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+    text-align:center;
+  }
+  .seg-btn:hover{color:var(--cream);}
+  .seg-btn.active{
+    background:var(--tomato);
+    border-color:var(--tomato);
+    color:#fff;
+  }
+
+  .search-row{
+    margin-top:14px;
+  }
+  .search-input{
+    width:100%;
+    padding:12px 14px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--cream);
+    font-family:'Manrope', sans-serif;
+    font-size:14px;
+    outline:none;
+  }
+  .search-input:focus{border-color:var(--tomato);}
+  .search-input::placeholder{color:var(--muted);}
+
+  /* ---- Recipe grid ---- */
+  .recipe-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:18px;
+  }
+  .recipe-card{
+    display:block;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:22px 22px 20px;
+    text-decoration:none;
+    color:inherit;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .recipe-card:hover{
+    border-color:var(--tomato);
+    transform:translateY(-2px);
+  }
+  .card-tag{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--basil);
+    background:rgba(124,154,93,0.12);
+    border:1px solid rgba(124,154,93,0.3);
+    border-radius:6px;
+    padding:4px 9px;
+    margin-bottom:14px;
+  }
+  .card-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:22px;
+    color:var(--cream);
+    margin:0 0 8px;
+    line-height:1.15;
+  }
+  .card-title em{font-style:italic; font-weight:400; color:var(--tomato);}
+  .card-desc{
+    font-size:13.5px;
+    color:var(--muted);
+    line-height:1.5;
+    margin:0 0 16px;
+  }
+  .card-meta{
+    display:flex;
+    gap:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#6b5c47;
+    color:var(--muted);
+    border-top:1px dashed var(--line);
+    padding-top:12px;
+  }
+  .card-meta span{display:flex; align-items:center; gap:5px;}
+
+  .empty-msg{
+    grid-column:1/-1;
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  .add-hint{
+    margin-top:28px;
+    text-align:center;
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .add-hint strong{color:var(--cream);}
+
+  @media (max-width:600px){
+    .recipe-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Rezeptdatenbank</p>
+    <h1>Dynamische Brotrezepte</h1>
+    <p class="sub">W&auml;chst mit jedem neuen Rezept &mdash; alle Teige lassen sich per Regler auf die gew&uuml;nschte Menge skalieren.</p>
+  </header>
+
+  <div class="filter-panel">
+    <h2>Nach Teigart filtern</h2>
+    <div class="segmented" id="filterBar">
+      <div class="seg-btn active" data-val="alle">Alle</div>
+      <div class="seg-btn" data-val="pizzateig">Pizzateig</div>
+      <div class="seg-btn" data-val="hefeteig">Hefeteig</div>
+      <div class="seg-btn" data-val="sauerteig">Sauerteig</div>
+    </div>
+    <div class="search-row">
+      <input type="text" class="search-input" id="searchInput" placeholder="Rezept suchen &hellip;">
+    </div>
+  </div>
+
+  <div class="recipe-grid" id="recipeGrid">
+    <a class="recipe-card" href="Rezepte/American%20Pizza.html" data-category="pizzateig" data-name="american pizza pizzateig usa">
+      <span class="card-tag">Pizzateig</span>
+      <h3 class="card-title">American Pizza</h3>
+      <p class="card-desc">Klassischer Pizzateig-Rechner mit Gr&ouml;sse, St&uuml;ckzahl, Dicke und Hydration &mdash; wahlweise mit kalter G&auml;rung.</p>
+      <div class="card-meta">
+        <span>&#127482;&#127480; USA</span>
+        <span>&#9201;&#65039; 1&ndash;3 Std. + optional kalt</span>
+      </div>
+    </a>
+
+    <a class="recipe-card" href="Rezepte/Sauerteig.html" data-category="sauerteig" data-name="sauerteig rechner anstellgut grundrezept">
+      <span class="card-tag">Sauerteig</span>
+      <h3 class="card-title">Sauerteig-Weissbrot</h3>
+      <p class="card-desc">Grundrezept f&uuml;r Weizensauerteigbrot mit Anstellgut-Auffrischung, Zeitplan und Sommer-/Winter-Anteil.</p>
+      <div class="card-meta">
+        <span>&#127811; Grundrezept</span>
+        <span>&#9201;&#65039; 3 Tage Vorlauf</span>
+      </div>
+    </a>
+
+    <a class="recipe-card" href="Rezepte/Pane%20Valle%20Maggia.html" data-category="hefeteig" data-name="pane valle maggia tessin bauernbrot schweiz">
+      <span class="card-tag">Hefeteig</span>
+      <h3 class="card-title">Pane Valle Maggia</h3>
+      <p class="card-desc">Rustikales Tessiner Bauernbrot aus Ruch- und Roggenmehl mit langer kalter St&ouml;ckgare.</p>
+      <div class="card-meta">
+        <span>&#127768; Tessin, CH</span>
+        <span>&#9201;&#65039; bis 24 Std. kalt</span>
+      </div>
+    </a>
+  </div>
+
+  <p class="add-hint">Neue Rezepte werden hier laufend erg&auml;nzt.<br><strong>Vorlage:</strong> Aufbau, Layout und Funktionalit&auml;t basieren auf dem Muster &bdquo;American Pizza&ldquo;.</p>
+</div>
+
+<script>
+(function(){
+  const filterBtns = document.querySelectorAll('#filterBar .seg-btn');
+  const cards = document.querySelectorAll('.recipe-card');
+  const searchInput = document.getElementById('searchInput');
+  const grid = document.getElementById('recipeGrid');
+  let activeFilter = 'alle';
+
+  function applyFilters(){
+    const term = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+    cards.forEach(card=>{
+      const matchesCategory = activeFilter === 'alle' || card.dataset.category === activeFilter;
+      const matchesSearch = !term || card.dataset.name.includes(term);
+      const show = matchesCategory && matchesSearch;
+      card.style.display = show ? '' : 'none';
+      if(show) visibleCount++;
+    });
+    let emptyMsg = grid.querySelector('.empty-msg');
+    if(visibleCount === 0){
+      if(!emptyMsg){
+        emptyMsg = document.createElement('div');
+        emptyMsg.className = 'empty-msg';
+        emptyMsg.textContent = 'Keine Rezepte gefunden.';
+        grid.appendChild(emptyMsg);
+      }
+    } else if(emptyMsg){
+      emptyMsg.remove();
+    }
+  }
+
+  filterBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      filterBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.val;
+      applyFilters();
+    });
+  });
+
+  searchInput.addEventListener('input', applyFilters);
+
+  applyFilters();
+})();
+</script>
+</body>
+</html>

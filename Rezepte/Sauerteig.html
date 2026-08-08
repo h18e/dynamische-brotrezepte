@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teigrechner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #1c1815;
+    --surface: #241e1a;
+    --surface-2: #2e2620;
+    --cream: #f3e9d2;
+    --paper: #efe3c4;
+    --tomato: #d9822b;
+    --tomato-dark: #b3661c;
+    --basil: #7c9a5d;
+    --muted: #9c8f7c;
+    --line: rgba(243,233,210,0.14);
+    --shadow: rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(217,130,43,0.12), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(124,154,93,0.08), transparent 50%),
+      var(--bg);
+    color:var(--cream);
+    font-family:'Manrope', system-ui, sans-serif;
+    min-height:100vh;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+  header{margin-bottom:32px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--basil);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(34px, 5.5vw, 56px);
+    line-height:1.02;
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+    color:var(--tomato);
+  }
+  h1 em{
+    font-style:italic;
+    font-weight:400;
+  }
+  .sub{color:var(--muted); font-size:15.5px; max-width:46ch; line-height:1.5;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap:28px;
+    align-items:start;
+  }
+  @media (max-width: 860px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:26px 26px 22px;
+  }
+  .panel h2{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 20px;
+    font-weight:500;
+  }
+
+  .field{margin-bottom:24px;}
+  .field-label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:10px;
+  }
+  .field-label span:first-child{font-size:14px; color:var(--cream); font-weight:600;}
+  .field-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--tomato);
+    font-weight:600;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:4px;
+    background:var(--surface-2);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--cream);
+    border:3px solid var(--tomato);
+    cursor:pointer;
+    margin-top:-1px;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--cream);
+    border:3px solid var(--tomato);
+    cursor:pointer;
+  }
+
+  .segmented{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .seg-btn{
+    flex:1;
+    min-width:80px;
+    padding:10px 12px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--muted);
+    font-family:'Manrope', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+    text-align:center;
+  }
+  .seg-btn:hover{color:var(--cream);}
+  .seg-btn.active{
+    background:var(--tomato);
+    border-color:var(--tomato);
+    color:#fff;
+  }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px;
+    background:var(--surface-2);
+    border-radius:10px;
+    border:1px solid var(--line);
+    margin-bottom:14px;
+  }
+  .toggle-row .t-label{font-size:13.5px; font-weight:600;}
+  .toggle-row .t-desc{font-size:12px; color:var(--muted); margin-top:2px;}
+  .switch{
+    position:relative; width:42px; height:24px; flex:0 0 auto;
+  }
+  .switch input{opacity:0; width:0; height:0;}
+  .slider-toggle{
+    position:absolute; cursor:pointer; inset:0;
+    background:#443a30; border-radius:24px; transition:.15s;
+  }
+  .slider-toggle:before{
+    content:""; position:absolute; height:18px; width:18px; left:3px; top:3px;
+    background:var(--cream); border-radius:50%; transition:.15s;
+  }
+  input:checked + .slider-toggle{background:var(--basil);}
+  input:checked + .slider-toggle:before{transform:translateX(18px);}
+
+  .note{
+    font-size:12px; color:var(--muted); line-height:1.5; margin-top:6px;
+  }
+
+  /* ---- Ticket ---- */
+  .ticket-shell{
+    position:sticky; top:20px;
+  }
+  .ticket{
+    background:var(--paper);
+    color:#2a2016;
+    border-radius:4px;
+    padding:30px 26px 20px;
+    position:relative;
+    box-shadow: 0 20px 40px -12px var(--shadow), 0 2px 0 rgba(0,0,0,0.15);
+    transform:rotate(-0.6deg);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .ticket:before{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-10px; height:20px;
+    background:
+      radial-gradient(circle 7px at 12px 0, transparent 7px, var(--paper) 7.5px) 0 -10px / 28px 20px repeat-x;
+  }
+  .ticket-head{
+    text-align:center;
+    border-bottom:1px dashed rgba(42,32,22,0.35);
+    padding-bottom:14px;
+    margin-bottom:16px;
+  }
+  .ticket-head .name{
+    font-family:'Fraunces', serif;
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .ticket-head .meta{
+    font-size:11px; color:#6b5c47; letter-spacing:0.08em; text-transform:uppercase; margin-top:6px;
+  }
+
+  .headline-stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    margin-bottom:18px;
+  }
+  @media (max-width: 480px){
+    .headline-stats{grid-template-columns:repeat(2,1fr);}
+  }
+  .stat{
+    text-align:center;
+    padding:10px 4px;
+    border:1px solid rgba(42,32,22,0.18);
+    border-radius:6px;
+  }
+  .stat .num{font-size:20px; font-weight:600; line-height:1;}
+  .stat .num .unit{font-size:12px; font-weight:500; margin-left:2px;}
+  .stat .lbl{font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:#6b5c47; margin-top:6px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px;}
+  thead th{
+    text-align:left; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#6b5c47; font-weight:500;
+    padding-bottom:6px; border-bottom:1px dashed rgba(42,32,22,0.35);
+  }
+  thead th:last-child, tbody td:last-child{text-align:right;}
+  tbody td{padding:7px 0; border-bottom:1px solid rgba(42,32,22,0.10);}
+  tbody tr:last-child td{border-bottom:none;}
+  .ing-name{font-weight:600;}
+  .ing-sub{padding-left:14px; font-weight:500; color:#6b5c47;}
+  .bakers{color:#6b5c47;}
+
+  .nutri-label{
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#6b5c47; font-weight:500;
+    padding-top:12px; margin-top:2px;
+    border-top:1px dashed rgba(42,32,22,0.35);
+  }
+  .nutri-table{margin-top:8px; margin-bottom:14px;}
+  .nutri-table td{padding:4px 0; border-bottom:none; font-size:12.5px;}
+  .nutri-table td:last-child{text-align:right; font-weight:600;}
+
+  .ticket-foot{
+    border-top:1px dashed rgba(42,32,22,0.35);
+    padding-top:12px;
+    font-size:11px;
+    color:#6b5c47;
+    line-height:1.6;
+  }
+
+  .actions{
+    display:flex; gap:10px; margin-top:18px;
+  }
+  .btn{
+    flex:1;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--cream);
+    font-family:'Manrope', sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .btn:hover{border-color:var(--tomato);}
+  .btn.primary{
+    background:var(--tomato);
+    border-color:var(--tomato);
+    color:#fff;
+  }
+  .btn.primary:hover{background:var(--tomato-dark);}
+
+  .instructions{
+    margin-top:18px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  .instructions summary{
+    cursor:pointer;
+    padding:18px 24px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    list-style:none;
+  }
+  .instructions summary::-webkit-details-marker{display:none;}
+  .instructions[open] summary{border-bottom:1px solid var(--line);}
+  .instructions ol{
+    padding:6px 24px 22px 42px;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--cream);
+  }
+  .instructions li::marker{color:var(--tomato); font-family:'IBM Plex Mono', monospace;}
+  .instructions li{margin-bottom:8px;}
+
+  @media print{
+    body{background:#fff; padding:0;}
+    .panel, header, .instructions, .actions{display:none !important;}
+    .ticket-shell{position:static;}
+    .ticket{transform:none; box-shadow:none; margin:20px auto; max-width:420px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Grundrezept</p>
+    <h1>Sauerteig-Weissbrot</h1>
+    <p class="sub">Weizensauerteigbrot mit zweifacher Anstellgut-Auffrischung, Autolyse und dreit&auml;giger Reife.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Controls -->
+    <div class="panel">
+      <h2>Dein Brot</h2>
+
+      <div class="field">
+        <div class="field-label"><span>Teiggewicht pro Teigling</span><span class="field-value" id="weightVal">700 g</span></div>
+        <input type="range" id="weight" min="400" max="1000" step="25" value="700">
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span>Anzahl Brote</span><span class="field-value" id="qtyVal">1</span></div>
+        <input type="range" id="qty" min="1" max="6" step="1" value="1">
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span>Sauerteig-Anteil</span></div>
+        <div class="segmented" id="anteil">
+          <div class="seg-btn" data-val="15">Sommer 15 %</div>
+          <div class="seg-btn active" data-val="20">Winter 20 %</div>
+        </div>
+        <p class="note">Im Sommer (w&auml;rmere K&uuml;che) weniger Sauerteig verwenden, im Winter mehr.</p>
+      </div>
+
+      <div class="field" style="margin-bottom:0;">
+        <div class="field-label"><span>Hydration</span><span class="field-value" id="hydVal">71 %</span></div>
+        <input type="range" id="hydration" min="60" max="90" step="1" value="71">
+        <p class="note" id="hydNote">Standard 71 % &mdash; kannst du frei anpassen.</p>
+      </div>
+    </div>
+
+    <!-- Ticket -->
+    <div class="ticket-shell">
+      <div class="ticket" id="ticket">
+        <div class="ticket-head">
+          <div class="name">Teig-Zutaten</div>
+          <div class="meta" id="ticketMeta">1 Brot &agrave; 700 g</div>
+        </div>
+
+        <div class="headline-stats">
+          <div class="stat"><div class="num" id="ballWeight">0<span class="unit">g</span></div><div class="lbl">Teigling</div></div>
+          <div class="stat"><div class="num" id="totalFlour">0<span class="unit">g</span></div><div class="lbl">Weissmehl total</div></div>
+          <div class="stat"><div class="num" id="totalWater">0<span class="unit">g</span></div><div class="lbl">Wasser total</div></div>
+          <div class="stat"><div class="num" id="hydStat">0<span class="unit">%</span></div><div class="lbl">Hydration</div></div>
+        </div>
+
+        <table>
+          <thead><tr><th>Zutat</th><th>Gramm</th><th>B%</th></tr></thead>
+          <tbody id="ingredientBody"></tbody>
+        </table>
+
+        <div class="nutri-label">Anstellgut &middot; 1. Auffrischen (3 Tage vor Backtag, abends)</div>
+        <table class="nutri-table"><tbody id="ag1Body"></tbody></table>
+
+        <div class="nutri-label">Anstellgut &middot; 2. Auffrischen (Tag vor Backtag, morgens)</div>
+        <table class="nutri-table"><tbody id="ag2Body"></tbody></table>
+
+        <div class="nutri-label">Sauerteig ansetzen (Tag vor Backtag, abends)</div>
+        <table class="nutri-table"><tbody id="stBody"></tbody></table>
+
+        <div class="nutri-label">N&auml;hrwerte pro Teigling</div>
+        <table class="nutri-table">
+          <tbody id="nutritionBody"></tbody>
+        </table>
+
+        <div class="ticket-foot" id="ticketFoot"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="copyBtn">Rezept kopieren</button>
+        <button class="btn primary" id="printBtn">Als PDF speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <details class="instructions">
+    <summary>Zubereitung &#9662;</summary>
+    <ol>
+      <li>3 Tage vor Backtag, abends (ca. 20:00): Anstellgut zum ersten Mal auffrischen &mdash; Menge siehe &bdquo;Anstellgut &middot; 1. Auffrischen&ldquo; oben. Abgedeckt bei Raumtemperatur reifen lassen.</li>
+      <li>Tag vor Backtag, morgens (ca. 06:00): Anstellgut ein zweites Mal auffrischen &mdash; Menge siehe &bdquo;Anstellgut &middot; 2. Auffrischen&ldquo; oben.</li>
+      <li>Tag vor Backtag, abends (ca. 20:00): Sauerteig ansetzen &mdash; Menge siehe &bdquo;Sauerteig ansetzen&ldquo; oben. Abgedeckt &uuml;ber Nacht bei Raumtemperatur reifen lassen, bis er deutlich aufgegangen ist und Blasen wirft.</li>
+      <li>Backtag, morgens (ca. 08:00): Autolyseteig ansetzen &mdash; Teigwasser und Weissmehl kurz vermischen, den reifen Sauerteig einarbeiten. Ca. 30 Minuten ruhen lassen.</li>
+      <li>Backtag (ca. 08:30): Hauptteig ansetzen &mdash; Salz und Bassinage-Wasser einarbeiten und fertigkneten. Anschliessend wie gewohnt dehnen &amp; falten, st&uuml;ckg&auml;ren, formen und backen.</li>
+    </ol>
+  </details>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  const weightEl = $('weight'), qtyEl = $('qty'), hydEl = $('hydration');
+  const anteilBtns = document.querySelectorAll('#anteil .seg-btn');
+  let anteilPct = 20;
+
+  const SALT_PCT = 2.5;
+
+  // Nährwerte pro 100g
+  const NUTRITION = {
+    flour: { kcal: 348, protein: 10.0, fat: 1.0, carbs: 70, sugar: 1, fiber: 4, salt: 0.01 },
+    water: { kcal: 0,   protein: 0,    fat: 0,   carbs: 0,  sugar: 0, fiber: 0, salt: 0 },
+    salt:  { kcal: 0,   protein: 0,    fat: 0,   carbs: 0,  sugar: 0, fiber: 0, salt: 100 }
+  };
+  // Reifer Sauerteig besteht näherungsweise zu 55% aus Weissmehl-Äquivalent, 45% Wasser
+  const STARTER_FLOUR_SHARE = 0.55;
+
+  let hydManuallySet = false;
+
+  anteilBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      anteilBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      anteilPct = parseInt(btn.dataset.val,10);
+      render();
+    });
+  });
+
+  hydEl.addEventListener('input', ()=>{ hydManuallySet = true; render(); });
+  weightEl.addEventListener('input', render);
+  qtyEl.addEventListener('input', render);
+
+  function round(n){ return Math.round(n); }
+
+  function compute(){
+    const teigGewicht = parseInt(weightEl.value,10);
+    const qty = parseInt(qtyEl.value,10);
+    const hydration = parseInt(hydEl.value,10);
+
+    const totalDough = teigGewicht * qty;
+
+    const denom = 1 + (hydration + SALT_PCT + anteilPct)/100;
+    const mehl = totalDough / denom;
+    const wasser = mehl * hydration/100;
+    const salz = mehl * SALT_PCT/100;
+    const sauerteig = mehl * anteilPct/100;
+    const bassinagewasser = wasser * 0.05;
+    const teigwasser = wasser * 0.95;
+
+    // Anstellgut-Berechnung (Verhältnis 2:5:4, inkl. 25% Reserve)
+    const agAnteil1 = sauerteig * (2/20);
+    const agMehl1 = agAnteil1 * (5/2);
+    const agWasser1 = agAnteil1 * (4/2);
+    const agTotal1 = (agAnteil1 + agMehl1 + agWasser1) * 1.25;
+
+    // Sauerteig ansetzen (Verhältnis 2:10:8, inkl. 20% Reserve)
+    const stAnteil = sauerteig * (2/20);
+    const stMehl = sauerteig * (10/20);
+    const stWasser = sauerteig * (8/20);
+    const stTotal = (stAnteil + stMehl + stWasser) * 1.20;
+
+    // Nährwerte pro Teigling
+    const keys = ['kcal','protein','fat','carbs','sugar','fiber','salt'];
+    const grams = {
+      flour: mehl + sauerteig * STARTER_FLOUR_SHARE,
+      water: wasser + sauerteig * (1 - STARTER_FLOUR_SHARE),
+      salt: salz
+    };
+    const nutrition = {};
+    keys.forEach(k=>{
+      let total = 0;
+      Object.keys(grams).forEach(ing=>{
+        total += grams[ing] * (NUTRITION[ing][k] / 100);
+      });
+      nutrition[k] = total / qty;
+    });
+
+    return {
+      teigGewicht, qty, hydration, anteilPct,
+      totalDough, mehl, wasser, salz, sauerteig, bassinagewasser, teigwasser,
+      agAnteil1, agMehl1, agWasser1, agTotal1,
+      stAnteil, stMehl, stWasser, stTotal,
+      nutrition
+    };
+  }
+
+  function render(){
+    const c = compute();
+    $('weightVal').textContent = c.teigGewicht + ' g';
+    $('qtyVal').textContent = c.qty;
+    $('hydVal').textContent = c.hydration + ' %';
+    $('hydNote').textContent = hydManuallySet
+      ? 'Manuell angepasst.'
+      : 'Standard 71 % — kannst du frei anpassen.';
+
+    $('ballWeight').innerHTML = round(c.teigGewicht) + '<span class="unit">g</span>';
+    $('totalFlour').innerHTML = round(c.mehl) + '<span class="unit">g</span>';
+    $('totalWater').innerHTML = round(c.wasser) + '<span class="unit">g</span>';
+    $('hydStat').innerHTML = c.hydration + '<span class="unit">%</span>';
+
+    $('ticketMeta').textContent = c.qty + ' Brot' + (c.qty > 1 ? 'e' : '') + ' à ' + c.teigGewicht + ' g';
+
+    const rows = [
+      ['Weissmehl', c.mehl, 100],
+      ['Wasser gesamt', c.wasser, c.hydration],
+      ['&nbsp;&nbsp;↳ Bassinage (5%)', c.bassinagewasser, 5],
+      ['&nbsp;&nbsp;↳ Teigwasser (95%)', c.teigwasser, 95],
+      ['Salz', c.salz, SALT_PCT],
+      ['Sauerteig, reif (' + c.anteilPct + '%)', c.sauerteig, c.anteilPct],
+    ];
+    $('ingredientBody').innerHTML = rows.map(r =>
+      '<tr><td class="ing-name">'+r[0]+'</td><td>'+round(r[1])+' g</td><td class="bakers">'+r[2].toFixed(1)+' %</td></tr>'
+    ).join('');
+
+    function stageRows(starter, mehl, wasser, total){
+      return [
+        ['Starter (Anstellgut)', starter],
+        ['Weissmehl', mehl],
+        ['Wasser', wasser],
+        ['Total (inkl. Reserve)', total],
+      ].map(r => '<tr><td>'+r[0]+'</td><td>'+round(r[1])+' g</td></tr>').join('');
+    }
+    $('ag1Body').innerHTML = stageRows(c.agAnteil1, c.agMehl1, c.agWasser1, c.agTotal1);
+    $('ag2Body').innerHTML = stageRows(c.agAnteil1, c.agMehl1, c.agWasser1, c.agTotal1);
+    $('stBody').innerHTML = stageRows(c.stAnteil, c.stMehl, c.stWasser, c.stTotal);
+
+    const n = c.nutrition;
+    const nutriRows = [
+      ['Energie', Math.round(n.kcal) + ' kcal'],
+      ['Fett', n.fat.toFixed(1) + ' g'],
+      ['Kohlenhydrate', n.carbs.toFixed(1) + ' g'],
+      ['davon Zucker', n.sugar.toFixed(1) + ' g'],
+      ['Ballaststoffe', n.fiber.toFixed(1) + ' g'],
+      ['Eiweiß', n.protein.toFixed(1) + ' g'],
+      ['Salz', n.salt.toFixed(2) + ' g'],
+    ];
+    $('nutritionBody').innerHTML = nutriRows.map(r =>
+      '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>'
+    ).join('');
+
+    $('ticketFoot').innerHTML =
+      'Reifezeit: Anstellgut 2× auffrischen über 3 Tage, dann Sauerteig über Nacht ansetzen.<br>'
+      + 'Teigling: ' + round(c.teigGewicht) + ' g · Gesamtteig: ' + round(c.totalDough) + ' g';
+  }
+
+  function copyToClipboard(text, btn){
+    const original = btn.textContent;
+    function showSuccess(){
+      btn.textContent = 'Kopiert ✓';
+      setTimeout(()=>{ btn.textContent = original; }, 1600);
+    }
+    function showError(){
+      btn.textContent = 'Fehler — manuell kopieren';
+      setTimeout(()=>{ btn.textContent = original; }, 2000);
+    }
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(showSuccess).catch(()=> fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy(){
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if(ok){ showSuccess(); } else { showError(); }
+      }catch(e){
+        showError();
+      }
+    }
+  }
+
+  function buildRecipeLines(c){
+    const lines = [
+      'SAUERTEIG-WEISSBROT',
+      'Weizensauerteigbrot',
+      '',
+      'TEIGREZEPT',
+      c.qty + ' Brot' + (c.qty > 1 ? 'e' : '') + ' à ' + c.teigGewicht + ' g',
+      '',
+      'Weissmehl: ' + round(c.mehl) + ' g (100%)',
+      'Wasser gesamt: ' + round(c.wasser) + ' g (' + c.hydration + '%)',
+      '  davon Bassinage (5%): ' + round(c.bassinagewasser) + ' g',
+      '  davon Teigwasser (95%): ' + round(c.teigwasser) + ' g',
+      'Salz: ' + round(c.salz) + ' g (' + SALT_PCT + '%)',
+      'Sauerteig, reif: ' + round(c.sauerteig) + ' g (' + c.anteilPct + '%)',
+      '',
+      'Teigling: ' + round(c.teigGewicht) + ' g',
+      'Gesamt: ' + round(c.totalDough) + ' g',
+      '',
+      'ANSTELLGUT · 1. AUFFRISCHEN (3 TAGE VOR BACKTAG, ABENDS)',
+      'Starter: ' + round(c.agAnteil1) + ' g · Weissmehl: ' + round(c.agMehl1) + ' g · Wasser: ' + round(c.agWasser1) + ' g · Total: ' + round(c.agTotal1) + ' g',
+      '',
+      'ANSTELLGUT · 2. AUFFRISCHEN (TAG VOR BACKTAG, MORGENS)',
+      'Starter: ' + round(c.agAnteil1) + ' g · Weissmehl: ' + round(c.agMehl1) + ' g · Wasser: ' + round(c.agWasser1) + ' g · Total: ' + round(c.agTotal1) + ' g',
+      '',
+      'SAUERTEIG ANSETZEN (TAG VOR BACKTAG, ABENDS)',
+      'Starter: ' + round(c.stAnteil) + ' g · Weissmehl: ' + round(c.stMehl) + ' g · Wasser: ' + round(c.stWasser) + ' g · Total: ' + round(c.stTotal) + ' g',
+      '',
+      'NÄHRWERTE PRO TEIGLING',
+      'Energie: ' + Math.round(c.nutrition.kcal) + ' kcal',
+      'Fett: ' + c.nutrition.fat.toFixed(1) + ' g',
+      'Kohlenhydrate: ' + c.nutrition.carbs.toFixed(1) + ' g (davon Zucker: ' + c.nutrition.sugar.toFixed(1) + ' g)',
+      'Ballaststoffe: ' + c.nutrition.fiber.toFixed(1) + ' g',
+      'Eiweiß: ' + c.nutrition.protein.toFixed(1) + ' g',
+      'Salz: ' + c.nutrition.salt.toFixed(2) + ' g',
+      '',
+      'ZUBEREITUNG'
+    ];
+    const steps = Array.from(document.querySelectorAll('.instructions ol li'));
+    steps.forEach((li, i)=>{ lines.push((i+1) + '. ' + li.textContent.trim()); });
+    return lines;
+  }
+
+  $('copyBtn').addEventListener('click', ()=>{
+    const c = compute();
+    const text = buildRecipeLines(c).join('\n');
+    copyToClipboard(text, $('copyBtn'));
+  });
+
+  $('printBtn').addEventListener('click', ()=>{
+    const btn = $('printBtn');
+    const original = btn.textContent;
+    try{
+      const { jsPDF } = window.jspdf;
+      const c = compute();
+      const lines = buildRecipeLines(c).slice(3);
+
+      const doc = new jsPDF({ unit:'pt', format:'a4' });
+      const marginX = 48;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const maxY = pageHeight - 48;
+      let y = 56;
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(20);
+      doc.text('Sauerteig-Weissbrot', marginX, y);
+      y += 22;
+
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(12);
+      doc.text('Weizensauerteigbrot', marginX, y);
+      y += 26;
+
+      doc.setFont('courier','normal');
+      doc.setFontSize(11);
+      const lineHeight = 15;
+
+      lines.forEach(line=>{
+        if(y > maxY){ doc.addPage(); y = 56; }
+        const isHeading = line.trim() !== '' && line === line.toUpperCase() && /[A-ZÄÖÜ]/.test(line);
+        doc.setFont('courier', isHeading ? 'bold' : 'normal');
+        if(line){
+          const wrapped = doc.splitTextToSize(line, 500);
+          wrapped.forEach(w=>{
+            if(y > maxY){ doc.addPage(); y = 56; }
+            doc.text(w, marginX, y);
+            y += lineHeight;
+          });
+        } else {
+          y += lineHeight;
+        }
+      });
+
+      const filename = 'sauerteig-' + c.qty + 'x' + c.teigGewicht + 'g.pdf';
+      const blobUrl = doc.output('bloburl');
+      const opened = window.open(blobUrl, '_blank');
+      if(!opened){
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      btn.textContent = 'PDF geöffnet ✓';
+      setTimeout(()=>{ btn.textContent = original; }, 1600);
+    }catch(e){
+      btn.textContent = 'Fehler beim PDF-Export';
+      setTimeout(()=>{ btn.textContent = original; }, 2000);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

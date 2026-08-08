@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teigrechner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #1c1815;
+    --surface: #241e1a;
+    --surface-2: #2e2620;
+    --cream: #f3e9d2;
+    --paper: #efe3c4;
+    --tomato: #d9822b;
+    --tomato-dark: #b3661c;
+    --basil: #7c9a5d;
+    --muted: #9c8f7c;
+    --line: rgba(243,233,210,0.14);
+    --shadow: rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(217,130,43,0.12), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(124,154,93,0.08), transparent 50%),
+      var(--bg);
+    color:var(--cream);
+    font-family:'Manrope', system-ui, sans-serif;
+    min-height:100vh;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+  header{margin-bottom:32px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--basil);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(34px, 5.5vw, 56px);
+    line-height:1.02;
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+    color:var(--tomato);
+  }
+  h1 em{
+    font-style:italic;
+    font-weight:400;
+  }
+  .sub{color:var(--muted); font-size:15.5px; max-width:46ch; line-height:1.5;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap:28px;
+    align-items:start;
+  }
+  @media (max-width: 860px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:26px 26px 22px;
+  }
+  .panel h2{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 20px;
+    font-weight:500;
+  }
+
+  .field{margin-bottom:24px;}
+  .field-label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:10px;
+  }
+  .field-label span:first-child{font-size:14px; color:var(--cream); font-weight:600;}
+  .field-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--tomato);
+    font-weight:600;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:4px;
+    background:var(--surface-2);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--cream);
+    border:3px solid var(--tomato);
+    cursor:pointer;
+    margin-top:-1px;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--cream);
+    border:3px solid var(--tomato);
+    cursor:pointer;
+  }
+
+  .segmented{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .seg-btn{
+    flex:1;
+    min-width:80px;
+    padding:10px 12px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--muted);
+    font-family:'Manrope', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+    text-align:center;
+  }
+  .seg-btn:hover{color:var(--cream);}
+  .seg-btn.active{
+    background:var(--tomato);
+    border-color:var(--tomato);
+    color:#fff;
+  }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px;
+    background:var(--surface-2);
+    border-radius:10px;
+    border:1px solid var(--line);
+    margin-bottom:14px;
+  }
+  .toggle-row .t-label{font-size:13.5px; font-weight:600;}
+  .toggle-row .t-desc{font-size:12px; color:var(--muted); margin-top:2px;}
+  .switch{
+    position:relative; width:42px; height:24px; flex:0 0 auto;
+  }
+  .switch input{opacity:0; width:0; height:0;}
+  .slider-toggle{
+    position:absolute; cursor:pointer; inset:0;
+    background:#443a30; border-radius:24px; transition:.15s;
+  }
+  .slider-toggle:before{
+    content:""; position:absolute; height:18px; width:18px; left:3px; top:3px;
+    background:var(--cream); border-radius:50%; transition:.15s;
+  }
+  input:checked + .slider-toggle{background:var(--basil);}
+  input:checked + .slider-toggle:before{transform:translateX(18px);}
+
+  .note{
+    font-size:12px; color:var(--muted); line-height:1.5; margin-top:6px;
+  }
+
+  /* ---- Ticket ---- */
+  .ticket-shell{
+    position:sticky; top:20px;
+  }
+  .ticket{
+    background:var(--paper);
+    color:#2a2016;
+    border-radius:4px;
+    padding:30px 26px 20px;
+    position:relative;
+    box-shadow: 0 20px 40px -12px var(--shadow), 0 2px 0 rgba(0,0,0,0.15);
+    transform:rotate(-0.6deg);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .ticket:before{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-10px; height:20px;
+    background:
+      radial-gradient(circle 7px at 12px 0, transparent 7px, var(--paper) 7.5px) 0 -10px / 28px 20px repeat-x;
+  }
+  .ticket-head{
+    text-align:center;
+    border-bottom:1px dashed rgba(42,32,22,0.35);
+    padding-bottom:14px;
+    margin-bottom:16px;
+  }
+  .ticket-head .name{
+    font-family:'Fraunces', serif;
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .ticket-head .meta{
+    font-size:11px; color:#6b5c47; letter-spacing:0.08em; text-transform:uppercase; margin-top:6px;
+  }
+
+  .headline-stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    margin-bottom:18px;
+  }
+  @media (max-width: 480px){
+    .headline-stats{grid-template-columns:repeat(2,1fr);}
+  }
+  .stat{
+    text-align:center;
+    padding:10px 4px;
+    border:1px solid rgba(42,32,22,0.18);
+    border-radius:6px;
+  }
+  .stat .num{font-size:20px; font-weight:600; line-height:1;}
+  .stat .num .unit{font-size:12px; font-weight:500; margin-left:2px;}
+  .stat .lbl{font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:#6b5c47; margin-top:6px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px;}
+  thead th{
+    text-align:left; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#6b5c47; font-weight:500;
+    padding-bottom:6px; border-bottom:1px dashed rgba(42,32,22,0.35);
+  }
+  thead th:last-child, tbody td:last-child{text-align:right;}
+  tbody td{padding:7px 0; border-bottom:1px solid rgba(42,32,22,0.10);}
+  tbody tr:last-child td{border-bottom:none;}
+  .ing-name{font-weight:600;}
+  .bakers{color:#6b5c47;}
+
+  .nutri-label{
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#6b5c47; font-weight:500;
+    padding-top:12px; margin-top:2px;
+    border-top:1px dashed rgba(42,32,22,0.35);
+  }
+  .nutri-table{margin-top:8px; margin-bottom:14px;}
+  .nutri-table td{padding:4px 0; border-bottom:none; font-size:12.5px;}
+  .nutri-table td:last-child{text-align:right; font-weight:600;}
+
+  .ticket-foot{
+    border-top:1px dashed rgba(42,32,22,0.35);
+    padding-top:12px;
+    font-size:11px;
+    color:#6b5c47;
+    line-height:1.6;
+  }
+
+  .actions{
+    display:flex; gap:10px; margin-top:18px;
+  }
+  .btn{
+    flex:1;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--cream);
+    font-family:'Manrope', sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .btn:hover{border-color:var(--tomato);}
+  .btn.primary{
+    background:var(--tomato);
+    border-color:var(--tomato);
+    color:#fff;
+  }
+  .btn.primary:hover{background:var(--tomato-dark);}
+
+  .instructions{
+    margin-top:18px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  .instructions summary{
+    cursor:pointer;
+    padding:18px 24px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    list-style:none;
+  }
+  .instructions summary::-webkit-details-marker{display:none;}
+  .instructions[open] summary{border-bottom:1px solid var(--line);}
+  .instructions ol{
+    padding:6px 24px 22px 42px;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--cream);
+  }
+  .instructions li::marker{color:var(--tomato); font-family:'IBM Plex Mono', monospace;}
+  .instructions li{margin-bottom:8px;}
+
+  @media print{
+    body{background:#fff; padding:0;}
+    .panel, header, .instructions, .actions{display:none !important;}
+    .ticket-shell{position:static;}
+    .ticket{transform:none; box-shadow:none; margin:20px auto; max-width:420px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Schweiz &middot; Tessin</p>
+    <h1>Pane Valle Maggia</h1>
+    <p class="sub">Rustikales Tessiner Bauernbrot mit Ruch- und Roggenmehl, langer kalter St&ouml;ckgare und knuspriger Kruste.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Controls -->
+    <div class="panel">
+      <h2>Dein Brot</h2>
+
+      <div class="field">
+        <div class="field-label"><span>Teiggewicht pro Teigling</span><span class="field-value" id="weightVal">550 g</span></div>
+        <input type="range" id="weight" min="400" max="1000" step="25" value="550">
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span>Anzahl Brote</span><span class="field-value" id="qtyVal">2</span></div>
+        <input type="range" id="qty" min="1" max="6" step="1" value="2">
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span>Mehl-Mix</span></div>
+        <div class="segmented" id="mehlmix">
+          <div class="seg-btn active" data-val="standard">Original 90/10</div>
+          <div class="seg-btn" data-val="roggen">Mehr Roggen 80/20</div>
+          <div class="seg-btn" data-val="ruch">Nur Ruchmehl</div>
+        </div>
+        <p class="note">Verh&auml;ltnis Ruchmehl zu hellem Roggenmehl.</p>
+      </div>
+
+      <div class="field" style="margin-bottom:0;">
+        <div class="field-label"><span>Hydration</span><span class="field-value" id="hydVal">77 %</span></div>
+        <input type="range" id="hydration" min="70" max="85" step="1" value="77">
+        <p class="note" id="hydNote">Standard 77 % &mdash; sehr weicher, klebriger Teig. Nicht erschrecken, das muss so sein.</p>
+      </div>
+    </div>
+
+    <!-- Ticket -->
+    <div class="ticket-shell">
+      <div class="ticket" id="ticket">
+        <div class="ticket-head">
+          <div class="name">Teig-Zutaten</div>
+          <div class="meta" id="ticketMeta">2 Brote &agrave; 540 g</div>
+        </div>
+
+        <div class="headline-stats">
+          <div class="stat"><div class="num" id="ballWeight">0<span class="unit">g</span></div><div class="lbl">Teigling</div></div>
+          <div class="stat"><div class="num" id="totalFlour">0<span class="unit">g</span></div><div class="lbl">Mehl total</div></div>
+          <div class="stat"><div class="num" id="totalWater">0<span class="unit">g</span></div><div class="lbl">Wasser total</div></div>
+          <div class="stat"><div class="num" id="hydStat">0<span class="unit">%</span></div><div class="lbl">Hydration</div></div>
+        </div>
+
+        <table>
+          <thead><tr><th>Zutat</th><th>Gramm</th><th>B%</th></tr></thead>
+          <tbody id="ingredientBody"></tbody>
+        </table>
+
+        <div class="nutri-label">N&auml;hrwerte pro Teigling</div>
+        <table class="nutri-table">
+          <tbody id="nutritionBody"></tbody>
+        </table>
+
+        <div class="ticket-foot" id="ticketFoot"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="copyBtn">Rezept kopieren</button>
+        <button class="btn primary" id="printBtn">Als PDF speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <details class="instructions">
+    <summary>Zubereitung &#9662;</summary>
+    <ol>
+      <li><strong>WICHTIG</strong> Erst mit dem berechneten Wasser beginnen, bei Bedarf nach und nach etwas mehr Wasser dazugeben &mdash; die Wasseraufnahme h&auml;ngt stark von der Mehlqualit&auml;t ab. Alle Zutaten mit dem Wasser beginnend in die K&uuml;chenmaschine geben und 5&ndash;6 Minuten ankneten.</li>
+      <li>Knetgeschwindigkeit erh&ouml;hen und den Teig weitere 4&ndash;5 Minuten kneten. Mit der Fensterprobe pr&uuml;fen &mdash; ist der Teig noch klebrig und rei&szlig;t, weiterkneten, bis er die Fensterprobe besteht.</li>
+      <li>Teig in ein leicht gefettetes Becken legen, mit einem Teigtuch abdecken und 2&ndash;3 Stunden bei Raumtemperatur g&auml;ren lassen (Stockgare Start).</li>
+      <li>Danach den Teig zum ersten Mal dehnen und falten. Am besten mit angefeuchteten H&auml;nden. <strong>TIPP</strong> Nicht erschrecken, das ist ein sehr weicher und klebriger Teig &mdash; das muss so sein.</li>
+      <li>Teig wieder abdecken und maximal 24 Stunden in den K&uuml;hlschrank stellen. Zwischendurch 2&ndash;3 Mal dehnen und falten. <strong>WICHTIG</strong> Die K&uuml;hlschranktemperatur darf nicht unter 5&nbsp;&deg;C fallen.</li>
+      <li>Nach der Gärzeit den Teig zum letzten Mal dehnen und falten, abgedeckt 1&ndash;2 Stunden bei Raumtemperatur akklimatisieren lassen.</li>
+      <li>Teig auf eine gut bemehlte Arbeitsfl&auml;che st&uuml;rzen, gem&auml;ss Anzahl Brote portionieren und jedes St&uuml;ck rund vorformen.</li>
+      <li>Die Teigst&uuml;cke zwei- bis dreimal sanft &uuml;ber die Arbeitsplatte schleifen, um eine glatte Oberfl&auml;che zu erhalten.</li>
+      <li>Ein Teigzipfel von einer Seite zur Mitte ziehen, leicht andr&uuml;cken, rundherum wiederholen, dabei m&ouml;glichst viel Luft im Teig belassen.</li>
+      <li>Teigst&uuml;ck umdrehen (glatte Seite oben), H&auml;nde vasenf&ouml;rmig darum legen und mit leichtem Druck auf der Tischplatte drehen, bis es unten geschlossen ist. <strong>TIPP</strong> Beim Verschliessen kein bis nur ganz wenig Mehl verwenden.</li>
+      <li>Teiglinge mit dem Verschluss nach unten auf bemehltes Backpapier legen und nochmals 20&ndash;30 Minuten bei Raumtemperatur aufgehen lassen (St&uuml;ckgare). Inzwischen Ofen mit Backstahl in der unteren H&auml;lfte auf 230&nbsp;&deg;C Ober-/Unterhitze vorheizen.</li>
+      <li>Teiglinge grossz&uuml;gig mit Mehl best&auml;uben und mit einem scharfen Messer (Pariser Brotklinge) dreimal in einem Ruck einschneiden.</li>
+      <li>Teiglinge mit dem Backpapier auf einen Brotschieber und von da auf das hei&szlig;e Blech in den Ofen geben. Ofen bedampfen und 20 Minuten backen.</li>
+      <li>Nach 20 Minuten die Ofent&uuml;r kurz &ouml;ffnen, damit der Dampf entweichen kann, und die Brote weitere 20&ndash;30 Minuten knusprig ausbacken.</li>
+      <li>Direkt nach dem Backen die Brote auf einem Gitter auskühlen lassen.</li>
+    </ol>
+  </details>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  const weightEl = $('weight'), qtyEl = $('qty'), hydEl = $('hydration');
+  const mehlmixBtns = document.querySelectorAll('#mehlmix .seg-btn');
+  let mehlmix = 'standard';
+
+  const MEHLMIX = {
+    standard: { ruch: 0.90, roggen: 0.10 },
+    roggen:   { ruch: 0.80, roggen: 0.20 },
+    ruch:     { ruch: 1.00, roggen: 0.00 }
+  };
+  const SALT_PCT = 2.33;
+  const YEAST_PCT = 0.83;
+
+  // Nährwerte pro 100g
+  const NUTRITION = {
+    ruchmehl:   { kcal: 340, protein: 11.0, fat: 1.5, carbs: 68, sugar: 1, fiber: 6, salt: 0.01 },
+    roggenmehl: { kcal: 325, protein: 8.5,  fat: 1.5, carbs: 65, sugar: 1, fiber: 8, salt: 0.01 },
+    water:      { kcal: 0,   protein: 0,    fat: 0,   carbs: 0,  sugar: 0, fiber: 0, salt: 0 },
+    yeast:      { kcal: 105, protein: 12.0, fat: 1.0, carbs: 4,  sugar: 0, fiber: 4, salt: 0.02 },
+    salt:       { kcal: 0,   protein: 0,    fat: 0,   carbs: 0,  sugar: 0, fiber: 0, salt: 100 }
+  };
+
+  let hydManuallySet = false;
+
+  mehlmixBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      mehlmixBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mehlmix = btn.dataset.val;
+      render();
+    });
+  });
+
+  hydEl.addEventListener('input', ()=>{ hydManuallySet = true; render(); });
+  weightEl.addEventListener('input', render);
+  qtyEl.addEventListener('input', render);
+
+  function round(n){ return Math.round(n); }
+
+  function compute(){
+    const teigGewicht = parseInt(weightEl.value,10);
+    const qty = parseInt(qtyEl.value,10);
+    const hydration = parseInt(hydEl.value,10);
+
+    const totalDough = teigGewicht * qty;
+
+    const denom = 1 + (hydration + SALT_PCT + YEAST_PCT)/100;
+    const flourTotal = totalDough / denom;
+    const water = flourTotal * hydration/100;
+    const saltW = flourTotal * SALT_PCT/100;
+    const yeastW = flourTotal * YEAST_PCT/100;
+
+    const mix = MEHLMIX[mehlmix];
+    const ruchmehl = flourTotal * mix.ruch;
+    const roggenmehl = flourTotal * mix.roggen;
+
+    // Nährwerte pro Teigling (Gesamtmenge je Zutat / 100 * Nährwert, dann /qty)
+    const keys = ['kcal','protein','fat','carbs','sugar','fiber','salt'];
+    const grams = { ruchmehl, roggenmehl, water, yeast: yeastW, salt: saltW };
+    const nutrition = {};
+    keys.forEach(k=>{
+      let total = 0;
+      Object.keys(grams).forEach(ing=>{
+        total += grams[ing] * (NUTRITION[ing][k] / 100);
+      });
+      nutrition[k] = total / qty;
+    });
+
+    return {
+      teigGewicht, qty, hydration,
+      totalDough, flourTotal,
+      ruchmehl, roggenmehl, water, saltW, yeastW,
+      mehlmix, nutrition
+    };
+  }
+
+  function render(){
+    const c = compute();
+    $('weightVal').textContent = c.teigGewicht + ' g';
+    $('qtyVal').textContent = c.qty;
+    $('hydVal').textContent = c.hydration + ' %';
+    $('hydNote').textContent = hydManuallySet
+      ? 'Manuell angepasst.'
+      : 'Standard 77 % — sehr weicher, klebriger Teig. Nicht erschrecken, das muss so sein.';
+
+    $('ballWeight').innerHTML = round(c.teigGewicht) + '<span class="unit">g</span>';
+    $('totalFlour').innerHTML = round(c.flourTotal) + '<span class="unit">g</span>';
+    $('totalWater').innerHTML = round(c.water) + '<span class="unit">g</span>';
+    $('hydStat').innerHTML = c.hydration + '<span class="unit">%</span>';
+
+    $('ticketMeta').textContent = c.qty + ' Brot' + (c.qty > 1 ? 'e' : '') + ' à ' + c.teigGewicht + ' g';
+
+    const ruchPct = c.mehlmix === 'standard' ? 90 : (c.mehlmix === 'roggen' ? 80 : 100);
+    const roggenPct = 100 - ruchPct;
+
+    const rows = [
+      ['Ruchmehl (Type 1050/1200)', c.ruchmehl, ruchPct],
+      ['Helles Roggenmehl (Type 610/815)', c.roggenmehl, roggenPct],
+      ['Wasser, kalt', c.water, c.hydration],
+      ['Frischhefe', c.yeastW, YEAST_PCT],
+      ['Salz', c.saltW, SALT_PCT],
+    ].filter(r => r[1] > 0.4);
+
+    $('ingredientBody').innerHTML = rows.map(r =>
+      '<tr><td class="ing-name">'+r[0]+'</td><td>'+round(r[1])+' g</td><td class="bakers">'+r[2].toFixed(1)+' %</td></tr>'
+    ).join('');
+
+    const n = c.nutrition;
+    const nutriRows = [
+      ['Energie', Math.round(n.kcal) + ' kcal'],
+      ['Fett', n.fat.toFixed(1) + ' g'],
+      ['Kohlenhydrate', n.carbs.toFixed(1) + ' g'],
+      ['davon Zucker', n.sugar.toFixed(1) + ' g'],
+      ['Ballaststoffe', n.fiber.toFixed(1) + ' g'],
+      ['Eiweiß', n.protein.toFixed(1) + ' g'],
+      ['Salz', n.salt.toFixed(2) + ' g'],
+    ];
+    $('nutritionBody').innerHTML = nutriRows.map(r =>
+      '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>'
+    ).join('');
+
+    $('ticketFoot').innerHTML =
+      'Stockgare: 2–3 Std. Raumtemp. + bis 24 Std. Kühlschrank.<br>'
+      + 'Backen: 230 °C, 40–50 Min. mit Dampf.'
+      + '<br>Teigling: ' + round(c.teigGewicht) + ' g · Gesamtteig: ' + round(c.totalDough) + ' g';
+  }
+
+  function copyToClipboard(text, btn){
+    const original = btn.textContent;
+    function showSuccess(){
+      btn.textContent = 'Kopiert ✓';
+      setTimeout(()=>{ btn.textContent = original; }, 1600);
+    }
+    function showError(){
+      btn.textContent = 'Fehler — manuell kopieren';
+      setTimeout(()=>{ btn.textContent = original; }, 2000);
+    }
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(showSuccess).catch(()=> fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy(){
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if(ok){ showSuccess(); } else { showError(); }
+      }catch(e){
+        showError();
+      }
+    }
+  }
+
+  function buildRecipeLines(c){
+    const ruchPct = c.mehlmix === 'standard' ? 90 : (c.mehlmix === 'roggen' ? 80 : 100);
+    const roggenPct = 100 - ruchPct;
+    const lines = [
+      'PANE VALLE MAGGIA',
+      'Tessiner Bauernbrot',
+      '',
+      'TEIGREZEPT',
+      c.qty + ' Brot' + (c.qty > 1 ? 'e' : '') + ' à ' + c.teigGewicht + ' g',
+      '',
+      'Ruchmehl (Type 1050/1200): ' + round(c.ruchmehl) + ' g (' + ruchPct + '%)',
+    ];
+    if(c.roggenmehl > 0.4){
+      lines.push('Helles Roggenmehl (Type 610/815): ' + round(c.roggenmehl) + ' g (' + roggenPct + '%)');
+    }
+    lines.push(
+      'Wasser, kalt: ' + round(c.water) + ' g (' + c.hydration + '%)',
+      'Frischhefe: ' + round(c.yeastW) + ' g (' + YEAST_PCT + '%)',
+      'Salz: ' + round(c.saltW) + ' g (' + SALT_PCT + '%)',
+      '',
+      'Teigling: ' + round(c.teigGewicht) + ' g',
+      'Gesamt: ' + round(c.totalDough) + ' g',
+      '',
+      'NÄHRWERTE PRO TEIGLING',
+      'Energie: ' + Math.round(c.nutrition.kcal) + ' kcal',
+      'Fett: ' + c.nutrition.fat.toFixed(1) + ' g',
+      'Kohlenhydrate: ' + c.nutrition.carbs.toFixed(1) + ' g (davon Zucker: ' + c.nutrition.sugar.toFixed(1) + ' g)',
+      'Ballaststoffe: ' + c.nutrition.fiber.toFixed(1) + ' g',
+      'Eiweiß: ' + c.nutrition.protein.toFixed(1) + ' g',
+      'Salz: ' + c.nutrition.salt.toFixed(2) + ' g',
+      '',
+      'ZUBEREITUNG'
+    );
+    const steps = Array.from(document.querySelectorAll('.instructions ol li'));
+    steps.forEach((li, i)=>{ lines.push((i+1) + '. ' + li.textContent.trim()); });
+    return lines;
+  }
+
+  $('copyBtn').addEventListener('click', ()=>{
+    const c = compute();
+    const text = buildRecipeLines(c).join('\n');
+    copyToClipboard(text, $('copyBtn'));
+  });
+
+  $('printBtn').addEventListener('click', ()=>{
+    const btn = $('printBtn');
+    const original = btn.textContent;
+    try{
+      const { jsPDF } = window.jspdf;
+      const c = compute();
+      const lines = buildRecipeLines(c).slice(3);
+
+      const doc = new jsPDF({ unit:'pt', format:'a4' });
+      const marginX = 48;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const maxY = pageHeight - 48;
+      let y = 56;
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(20);
+      doc.text('Pane Valle Maggia', marginX, y);
+      y += 22;
+
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(12);
+      doc.text('Tessiner Bauernbrot', marginX, y);
+      y += 26;
+
+      doc.setFont('courier','normal');
+      doc.setFontSize(11);
+      const lineHeight = 15;
+
+      lines.forEach(line=>{
+        if(y > maxY){ doc.addPage(); y = 56; }
+        const isHeading = line === 'TEIGREZEPT' || line === 'NÄHRWERTE PRO TEIGLING' || line === 'ZUBEREITUNG';
+        doc.setFont('courier', isHeading ? 'bold' : 'normal');
+        if(line){
+          const wrapped = doc.splitTextToSize(line, 500);
+          wrapped.forEach(w=>{
+            if(y > maxY){ doc.addPage(); y = 56; }
+            doc.text(w, marginX, y);
+            y += lineHeight;
+          });
+        } else {
+          y += lineHeight;
+        }
+      });
+
+      const filename = 'pane-valle-maggia-' + c.qty + 'x' + c.teigGewicht + 'g.pdf';
+      const blobUrl = doc.output('bloburl');
+      const opened = window.open(blobUrl, '_blank');
+      if(!opened){
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      btn.textContent = 'PDF geöffnet ✓';
+      setTimeout(()=>{ btn.textContent = original; }, 1600);
+    }catch(e){
+      btn.textContent = 'Fehler beim PDF-Export';
+      setTimeout(()=>{ btn.textContent = original; }, 2000);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
